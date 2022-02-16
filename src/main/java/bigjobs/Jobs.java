@@ -13,7 +13,8 @@ public class Jobs {
     public static Predicate<Job> withAttribute(String attributeName, String attributeValue){
         return job -> {
             String value = job.getAttributes().get(attributeName);
-            return ( (value==null && attributeValue==null) || value.equals(attributeValue) );
+            if (value==null && attributeValue==null) return true;
+            return  value!=null && attributeValue!=null && value.equals(attributeValue);
         };
     }
 

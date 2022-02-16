@@ -9,7 +9,7 @@ import lombok.ToString;
 public class JobEvent extends Event {
 
     @Getter
-    EventType type;
+    JobEventType jobEventType;
     @Getter
     Job jobOldValue;
     @Getter

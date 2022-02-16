@@ -1,5 +1,5 @@
 package bigjobs;
 
-public enum EventType {
+public enum JobEventType {
     CHANGED_JOB_STATUS, REMOVED, NEW_JOB
 }

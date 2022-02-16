@@ -5,13 +5,33 @@ import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.BigQueryOptions;
 import com.google.cloud.bigquery.Job;
 import bigjobs.BigJobsJobsManager;
-import bigjobs.BigJobsUpdater;
+import bigjobs.BigJobsPlugin;
+import lombok.extern.log4j.Log4j;
+import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class BigQueryUpdater implements BigJobsUpdater {
+/**
+ * This file is part of BigJobs.
+ *
+ *     BigJobs is free software: you can redistribute it and/or modify
+ *     it under the terms of the GNU General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ *
+ *     BigJobs is distributed in the hope that it will be useful,
+ *     but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *     GNU General Public License for more details.
+ *
+ *     You should have received a copy of the GNU General Public License
+ *     along with BigJobs.  If not, see <http://www.gnu.org/licenses/>.
+ */
+@Log4j2
+public class BigQueryUpdater implements BigJobsPlugin {
 
     String projectId;
     public BigQueryUpdater(String projectId){
@@ -21,7 +41,7 @@ public class BigQueryUpdater implements BigJobsUpdater {
     BigJobsJobsManager manager;
 
     @Override
-    public void setJobsManager(BigJobsJobsManager manager) {
+    public void register(BigJobsJobsManager manager) {
         this.manager = manager;
     }
 
@@ -60,6 +80,7 @@ public class BigQueryUpdater implements BigJobsUpdater {
         manager.update(bjJobs, job -> {
             if (job instanceof BigQueryJob){
                 BigQueryJob bigQueryJob = (BigQueryJob) job;
+                assert bigQueryJob.gcpProjectId!=null;
                 return bigQueryJob.getGcpProjectId().equals(gpcProjectId)
                         && BigQueryJob.TECHNOLOGY.equals(job.getType());
             }

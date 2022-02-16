@@ -31,20 +31,24 @@ public class SimpleTest {
         // da cloud storage a bigquery
         // da bigquery a bigquery
 
+
         String projectId = "smart-reporting-332510";
         String file = "gs://smart-repo-storage/ip_security.csv";
 
         BigJobs bigJobs = new BigJobs();
 
         BigQueryUpdater bigQueryUpdater = new BigQueryUpdater(projectId);
-        bigJobs.register(bigQueryUpdater);
+        bigJobs.addPlugin(bigQueryUpdater);
 
         createLoadJob(bigJobs, projectId,file);
         bigJobs .on(Events.onDone(Jobs.withAttribute("type","example")))
-                .then( () -> {
+                .then( (evt) -> {
                     createCopyJob(bigJobs,projectId);
                 } )
                 .build();
+
+
+
     }
 
     public static void createCopyJob(BigJobs bigJobs, String gcpProjectId){

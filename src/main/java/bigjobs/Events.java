@@ -8,7 +8,7 @@ public class Events {
         return event -> {
             if (! (event instanceof JobEvent)){ return false; }
             JobEvent jobEvent = (JobEvent) event;
-            return jobEvent.getType()==EventType.CHANGED_JOB_STATUS;
+            return jobEvent.getJobEventType()== JobEventType.CHANGED_JOB_STATUS;
             };
     }
 
@@ -16,7 +16,7 @@ public class Events {
         return event -> {
             if (! (event instanceof JobEvent)){ return false; }
             JobEvent jobEvent = (JobEvent) event;
-            return jobEvent.getType()==EventType.CHANGED_JOB_STATUS && jobEvent.jobActualValue.getStatus()==JobStatus.DONE
+            return jobEvent.getJobEventType()== JobEventType.CHANGED_JOB_STATUS && jobEvent.jobActualValue.getStatus()==JobStatus.DONE
                 && jobPredicate.test( jobEvent.jobActualValue );
         };
     }

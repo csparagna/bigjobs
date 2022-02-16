@@ -4,10 +4,28 @@ import com.google.cloud.bigquery.*;
 import bigjobs.BJException;
 import bigjobs.Job;
 import lombok.*;
+import lombok.extern.log4j.Log4j2;
 
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * This file is part of BigJobs.
+ *
+ *     BigJobs is free software: you can redistribute it and/or modify
+ *     it under the terms of the GNU General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ *
+ *     BigJobs is distributed in the hope that it will be useful,
+ *     but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *     GNU General Public License for more details.
+ *
+ *     You should have received a copy of the GNU General Public License
+ *     along with BigJobs.  If not, see <http://www.gnu.org/licenses/>.
+ */
+@Log4j2
 @ToString
 public class BigQueryJob implements Job {
 
@@ -15,7 +33,9 @@ public class BigQueryJob implements Job {
 
     BigQuery bigquery;
     BigQuery getBigQuery(){
-        if (bigquery==null) bigquery = BigQueryOptions.newBuilder().setProjectId(gcpProjectId).build().getService();
+        if (bigquery==null)
+            bigquery = BigQueryOptions.newBuilder()
+                    .setProjectId(gcpProjectId).build().getService();
         return  bigquery;
     }
 
@@ -55,7 +75,7 @@ public class BigQueryJob implements Job {
     @Override
     public void remove() throws BJException {
         boolean deleted = getBigQuery().delete(getBigQueryJobId());
-        System.out.println("removed from bq "+deleted + " "+getBigQueryJobId());
+        log.info("removed from bq "+deleted + " "+getBigQueryJobId());
     }
 
     @Setter(AccessLevel.PROTECTED)

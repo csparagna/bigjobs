@@ -1,33 +1,45 @@
 package bigjobs;
 
+import lombok.Getter;
+
 import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 
-public class TriggerBuilder {
+public class TriggerBuilder<EVT extends Event> {
+    @Getter
     BigJobs bigJobs;
-    Predicate<Event> event;
+    @Getter
+    Predicate<EVT> event;
+    @Getter
     String name;
+    @Getter
     BooleanSupplier condition;
-    Runnable action;
+    @Getter
+    Consumer<EVT> action;
+    @Getter
     boolean autoRemove;
+    @Getter
+    boolean enabled = true;
 
 
-    public TriggerBuilder on(Predicate<Event> eventMatcher){
+    public TriggerBuilder<EVT> on(Predicate<EVT> eventMatcher){
         this.event = eventMatcher;
         return this;
     }
 
-    public TriggerBuilder withName(String name){
+    public TriggerBuilder<EVT> withName(String name){
         this.name = name;
         return this;
     }
 
-    public TriggerBuilder ifCondition(BooleanSupplier condition){
+    public TriggerBuilder<EVT> ifCondition(BooleanSupplier condition){
         this.condition = condition;
         return this;
     }
-    public TriggerBuilder then(Runnable action){
+    public TriggerBuilder<EVT> then(Consumer<EVT> action){
         this.action = action;
         return this;
     }
@@ -37,21 +49,19 @@ public class TriggerBuilder {
         return this;
     }
 
-    public Trigger build(){
-
-        Trigger trigger = Trigger.builder()
-                .withName(name)
-                .withEnabled(true)
-                .withAutoRemove(autoRemove)
-                .withAction(action)
-                .withEventMatcher(event)
-                .withCondition(condition)
-                .build();
+    public Trigger<EVT> build(){
+        Trigger<EVT> trigger = new Trigger<> (this);
         bigJobs.add(trigger);
         return trigger;
     }
 
-    public TriggerBuilder withBigJobs(BigJobs bigJobs) {
+
+    private TriggerBuilder<EVT> withEnabled(boolean enabled) {
+        this.enabled = enabled;
+        return this;
+    }
+
+    public TriggerBuilder<EVT> withBigJobs(BigJobs bigJobs) {
         this.bigJobs = bigJobs;
         return this;
     }
