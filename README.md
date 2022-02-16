@@ -8,3 +8,5 @@ The need arose by trying to launch two bigquery jobs (GCP) one after the other.
 
 The use of this library is not recommended at this stage of development.
 
+Development board is available at https://trello.com/b/1X6wcAGr/big-jobs
+
