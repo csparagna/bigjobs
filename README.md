@@ -1,5 +1,6 @@
 # BigJobs
-Jobs triggering library Very simple Jobs Orchestrating API.
+Jobs triggering library 
+BigJobs wants to be a very simple Jobs Orchestrating API supporting major cloud platforms.
 
 The project purpose is to manage easily different type of jobs by defining triggers in a very simple way. The need arose by trying to launch two bigquery jobs (GCP) one after the other.
 
@@ -16,7 +17,7 @@ bigJobs
 
 **At the moment the project is a POC and a work in progress.**
 
-**The use of this library is not recommended at this stage of development.**
+**Using this library is not recommended at this stage of development.**
 
 
 
