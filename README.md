@@ -20,5 +20,5 @@ bigJobs
 
 
 
-![Image BigJobs](logo.png)
+![Image BigJobs](docs/logo.png)
 
