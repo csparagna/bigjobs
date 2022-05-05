@@ -2,6 +2,10 @@ package bigjobs;
 
 import java.util.List;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
+
+import static java.util.Collections.unmodifiableList;
 
 /**
  * This file is part of BigJobs.
@@ -30,7 +34,11 @@ public class BigJobs {
     }
 
 
-    public List<Job> getJobs(){ return bigJobsJobsManager.jobsSnapshot; }
+    public List<Job> getJobs() {
+        return unmodifiableList(
+                StreamSupport.stream(bigJobsJobsManager.jobRepo.spliterator(), false).collect(Collectors.toList())
+        );
+    }
 
     public void add(Trigger trigger) { bigJobsJobsManager.add(trigger); }
     public void remove(Trigger trigger) { bigJobsJobsManager.remove(trigger); }

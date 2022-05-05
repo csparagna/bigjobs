@@ -1,5 +1,7 @@
 package bigjobs;
 
+import bigjobs.repository.InMemoryJobRepo;
+import bigjobs.repository.JobRepo;
 import lombok.Getter;
 
 import java.util.ArrayList;
@@ -7,6 +9,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 /**
  * This file is part of BigJobs.
@@ -26,9 +29,9 @@ import java.util.stream.Collectors;
  */
 public class BigJobsJobsManager {
 
-    List<Job> jobsSnapshot = new ArrayList<>();
     List<Trigger> triggers = new ArrayList<>();
 
+    JobRepo jobRepo = new InMemoryJobRepo();
 
     public BigJobsJobsManager(BigJobs bigJobs){
         this.bigJobs = bigJobs;
@@ -47,12 +50,11 @@ public class BigJobsJobsManager {
         System.out.println("applyUpdate to jobId: "+jobId);
         Optional<Job> oldJobOpt = toCheck.stream().filter(job1 -> { return job1.getJobId().equals(jobId); }).findFirst();
 
+        jobRepo.upsert(job);
         if (oldJobOpt.isPresent()) {
             // aggiorna
             Job oldJob = oldJobOpt.get();
             toCheck.remove(oldJob);
-            jobsSnapshot.remove(oldJob);
-            jobsSnapshot.add(job);
             if (!oldJob.getStatus().equals(job.getStatus())) {
                 JobEvent event = JobEvent.builder()
                         .jobOldValue(oldJob)
@@ -63,7 +65,6 @@ public class BigJobsJobsManager {
             }
         } else {
             // inserisci
-            jobsSnapshot.add(job);
             JobEvent event = JobEvent.builder()
                     .jobOldValue(null)
                     .jobActualValue(job)
@@ -76,14 +77,14 @@ public class BigJobsJobsManager {
         if (job.getStatus().equals(JobStatus.DONE)){
             try {
                 job.remove();
-                jobsSnapshot.remove(job);
+                jobRepo.remove(jobId);
             } catch (BJException e) { e.printStackTrace(); }
         }
 
     }
 
-    private synchronized void removed(Job job){
-        jobsSnapshot.remove(job);
+    private synchronized void remove(Job job){
+        jobRepo.remove(job.getJobId());
         JobEvent event = JobEvent.builder()
                 .jobOldValue(job)
                 .jobActualValue(null)
@@ -94,13 +95,10 @@ public class BigJobsJobsManager {
 
 
     public void update(List<Job> jobsUpdated, Predicate<Job> jobFilter){
-        List<Job> toCheck = jobsSnapshot.stream().filter(jobFilter).collect(Collectors.toList());
-
-        List<Job> untouched = new ArrayList<>(jobsUpdated);
-        untouched.removeAll(untouched);
+        List<Job> toCheck = StreamSupport.stream(jobRepo.spliterator(), false).filter(jobFilter).collect(Collectors.toList());
 
         for (Job jobUpdated: jobsUpdated){ applyUpdate(jobUpdated, toCheck); }
-        for (Job jobToRemove: toCheck){ removed(jobToRemove); }
+        for (Job jobToRemove: toCheck){ remove(jobToRemove); }
 
     }
 
