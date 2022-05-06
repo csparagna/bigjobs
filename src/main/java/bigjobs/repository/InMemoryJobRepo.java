@@ -20,8 +20,8 @@ import bigjobs.Job;
 
 import java.util.Iterator;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.Queue;
+import java.util.concurrent.*;
 
 import static java.util.Collections.unmodifiableCollection;
 
@@ -55,7 +55,45 @@ public final class InMemoryJobRepo implements JobRepo {
     }
 
     @Override
+    public UnitOfWork unitOfWork() {
+        return new InMemoryUnitOfWork();
+    }
+
+    @Override
     public Iterator<Job> iterator() {
         return unmodifiableCollection(this.map.values()).iterator();
+    }
+
+    final class InMemoryUnitOfWork implements UnitOfWork {
+        private final BlockingQueue<Runnable> actions;
+
+        InMemoryUnitOfWork() {
+            this(new LinkedBlockingQueue<>());
+        }
+
+        InMemoryUnitOfWork(final BlockingQueue<Runnable> actions) {
+            this.actions = actions;
+        }
+
+        @Override
+        public void registerUpsert(final Job job) {
+            this.actions.add(() -> InMemoryJobRepo.this.upsert(job));
+        }
+
+        @Override
+        public void registerRemove(final String id) {
+            this.actions.add(() -> InMemoryJobRepo.this.remove(id));
+        }
+
+        @Override
+        public void commit() {
+            drainedActions().forEach(Runnable::run);
+        }
+
+        private Iterable<Runnable> drainedActions() {
+            Queue<Runnable> result = new ConcurrentLinkedQueue<>();
+            this.actions.drainTo(result);
+            return result;
+        }
     }
 }

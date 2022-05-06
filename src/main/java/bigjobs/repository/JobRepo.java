@@ -45,4 +45,11 @@ public interface JobRepo extends Iterable<Job> {
      * @return The job or empty
      */
     Optional<Job> byId(String id);
+
+    /**
+     * Builds a unit of work
+     *
+     * @return The unit of work
+     */
+    UnitOfWork unitOfWork();
 }
