@@ -3,7 +3,7 @@ package bigjobs.repository;
 import bigjobs.Job;
 
 /**
- * Group of committable changes
+ * Ordered group of committable changes
  */
 public interface UnitOfWork {
     /**
