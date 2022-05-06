@@ -2,6 +2,7 @@ package bigjobs;
 
 import bigjobs.repository.InMemoryJobRepo;
 import bigjobs.repository.JobRepo;
+import bigjobs.repository.UnitOfWork;
 import lombok.Getter;
 
 import java.util.ArrayList;
@@ -48,9 +49,11 @@ public class BigJobsJobsManager {
     private synchronized void applyUpdate(Job job, List<Job> toCheck){
         String jobId = job.getJobId();
         System.out.println("applyUpdate to jobId: "+jobId);
-        Optional<Job> oldJobOpt = toCheck.stream().filter(job1 -> { return job1.getJobId().equals(jobId); }).findFirst();
+        Optional<Job> oldJobOpt = toCheck.stream().filter(job1 -> job1.getJobId().equals(jobId)).findFirst();
 
-        jobRepo.upsert(job);
+        UnitOfWork unitOfWork = jobRepo.unitOfWork();
+
+        unitOfWork.registerUpsert(job);
         if (oldJobOpt.isPresent()) {
             // aggiorna
             Job oldJob = oldJobOpt.get();
@@ -77,10 +80,11 @@ public class BigJobsJobsManager {
         if (job.getStatus().equals(JobStatus.DONE)){
             try {
                 job.remove();
-                jobRepo.remove(jobId);
+                unitOfWork.registerRemove(jobId);
             } catch (BJException e) { e.printStackTrace(); }
         }
 
+        unitOfWork.commit();
     }
 
     private synchronized void remove(Job job){
