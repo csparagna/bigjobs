@@ -16,13 +16,20 @@
  */
 package bigjobs.repository;
 
+import bigjobs.Event;
 import bigjobs.Job;
+import bigjobs.JobEvent;
 
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.*;
+import java.util.function.Consumer;
 
+import static bigjobs.JobEventType.CHANGED_JOB_STATUS;
+import static bigjobs.JobEventType.REMOVED;
+import static java.util.Collections.singleton;
 import static java.util.Collections.unmodifiableCollection;
 
 /**
@@ -30,28 +37,66 @@ import static java.util.Collections.unmodifiableCollection;
  */
 public final class InMemoryJobRepo implements JobRepo {
     private final ConcurrentMap<String, Job> map;
+    private final Collection<Consumer<Event>> eventsConsumers;
 
+    /**
+     * Builds a repo
+     */
     public InMemoryJobRepo() {
-        this(new ConcurrentHashMap<>());
+        this(new ConcurrentHashMap<>(), new LinkedBlockingQueue<>());
     }
 
-    InMemoryJobRepo(final ConcurrentMap<String, Job> map) {
+    /**
+     * Builds a repo with a single event consumer
+     *
+     * @param eventConsumer The event consumer
+     */
+    public InMemoryJobRepo(final Consumer<Event> eventConsumer) {
+        this(new ConcurrentHashMap<>(), singleton(eventConsumer));
+    }
+
+    InMemoryJobRepo(final ConcurrentMap<String, Job> map, final Collection<Consumer<Event>> eventsConsumers) {
         this.map = map;
+        this.eventsConsumers = eventsConsumers;
     }
 
     @Override
     public void upsert(final Job job) {
-        this.map.put(job.getJobId(), job);
+        Job previousJob = this.map.put(job.getJobId(), job);
+        if (previousJob == null || previousJob.getStatus().equals(job.getStatus())) {
+            fire(
+                    JobEvent.builder()
+                            .jobOldValue(previousJob)
+                            .jobActualValue(job)
+                            .jobEventType(CHANGED_JOB_STATUS)
+                            .build()
+            );
+        }
+    }
+
+    private void fire(final Event event) {
+        this.eventsConsumers.forEach(eventConsumer -> eventConsumer.accept(event));
     }
 
     @Override
     public void remove(final String id) {
-        this.map.remove(id);
+        Job removedJob = this.map.remove(id);
+        fire(
+                JobEvent.builder()
+                        .jobOldValue(removedJob)
+                        .jobEventType(REMOVED)
+                        .build()
+        );
     }
 
     @Override
     public Optional<Job> byId(final String id) {
         return Optional.ofNullable(this.map.get(id));
+    }
+
+    @Override
+    public void subscribe(final Consumer<Event> eventsConsumer) {
+        this.eventsConsumers.add(eventsConsumer);
     }
 
     @Override

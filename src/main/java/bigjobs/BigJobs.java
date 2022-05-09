@@ -24,9 +24,7 @@ import static java.util.Collections.unmodifiableList;
  *     along with BigJobs.  If not, see <http://www.gnu.org/licenses/>.
  */
 public class BigJobs {
-
-
-    BigJobsJobsManager bigJobsJobsManager = new BigJobsJobsManager(this);
+    private BigJobsJobsManager bigJobsJobsManager = new BigJobsJobsManager();
 
     public void addPlugin(BigJobsPlugin updater){
         updater.register(bigJobsJobsManager);
@@ -35,9 +33,7 @@ public class BigJobs {
 
 
     public List<Job> getJobs() {
-        return unmodifiableList(
-                StreamSupport.stream(bigJobsJobsManager.jobRepo.spliterator(), false).collect(Collectors.toList())
-        );
+        return bigJobsJobsManager.getJobs();
     }
 
     public void add(Trigger trigger) { bigJobsJobsManager.add(trigger); }

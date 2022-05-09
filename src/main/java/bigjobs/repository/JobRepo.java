@@ -16,9 +16,11 @@
  */
 package bigjobs.repository;
 
+import bigjobs.Event;
 import bigjobs.Job;
 
 import java.util.Optional;
+import java.util.function.Consumer;
 
 /**
  * {@link Job} Repository
@@ -45,6 +47,13 @@ public interface JobRepo extends Iterable<Job> {
      * @return The job or empty
      */
     Optional<Job> byId(String id);
+
+    /**
+     * Subscribes an {@link Event} consumer to itself
+     *
+     * @param eventsConsumer The events consumer
+     */
+    void subscribe(Consumer<Event> eventsConsumer);
 
     /**
      * Builds a unit of work

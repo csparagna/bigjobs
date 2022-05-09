@@ -3,14 +3,15 @@ package bigjobs;
 import bigjobs.repository.InMemoryJobRepo;
 import bigjobs.repository.JobRepo;
 import bigjobs.repository.UnitOfWork;
-import lombok.Getter;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
+import java.util.stream.Stream;
+
+import static java.util.Collections.unmodifiableList;
+import static java.util.stream.StreamSupport.stream;
 
 /**
  * This file is part of BigJobs.
@@ -29,91 +30,64 @@ import java.util.stream.StreamSupport;
  *     along with BigJobs.  If not, see <http://www.gnu.org/licenses/>.
  */
 public class BigJobsJobsManager {
+    private final JobRepo jobRepo = new InMemoryJobRepo(this::fire);
+    private final List<Trigger> triggers = new ArrayList<>();
 
-    List<Trigger> triggers = new ArrayList<>();
-
-    JobRepo jobRepo = new InMemoryJobRepo();
-
-    public BigJobsJobsManager(BigJobs bigJobs){
-        this.bigJobs = bigJobs;
+    public void add(Trigger trigger) {
+        triggers.add(trigger);
     }
 
-    @Getter
-    BigJobs bigJobs;
+    public void remove(Trigger trigger) {
+        synchronized (triggers) {
+            triggers.remove(trigger);
+        }
+    }
 
-
-    public void add(Trigger trigger) { triggers.add(trigger); }
-    public void remove(Trigger trigger) { synchronized (triggers) { triggers.remove(trigger); } }
-
-
-    private synchronized void applyUpdate(Job job, List<Job> toCheck){
-        String jobId = job.getJobId();
-        System.out.println("applyUpdate to jobId: "+jobId);
-        Optional<Job> oldJobOpt = toCheck.stream().filter(job1 -> job1.getJobId().equals(jobId)).findFirst();
-
+    private synchronized void applyUpdate(Job job, List<Job> toCheck) {
+        System.out.printf("applyUpdate to jobId: %s\n", job.getJobId());
         UnitOfWork unitOfWork = jobRepo.unitOfWork();
-
         unitOfWork.registerUpsert(job);
-        if (oldJobOpt.isPresent()) {
-            // aggiorna
-            Job oldJob = oldJobOpt.get();
-            toCheck.remove(oldJob);
-            if (!oldJob.getStatus().equals(job.getStatus())) {
-                JobEvent event = JobEvent.builder()
-                        .jobOldValue(oldJob)
-                        .jobActualValue(job)
-                        .jobEventType(JobEventType.CHANGED_JOB_STATUS)
-                        .build();
-                fire(event);
-            }
-        } else {
-            // inserisci
-            JobEvent event = JobEvent.builder()
-                    .jobOldValue(null)
-                    .jobActualValue(job)
-                    .jobEventType(JobEventType.CHANGED_JOB_STATUS)
-                    .build();
-            fire(event);
+        if (jobRepo.byId(job.getJobId()).isPresent()) {
+            toCheck.remove(job);
         }
 
-        // se DONE rimuovere
-        if (job.getStatus().equals(JobStatus.DONE)){
+        if (job.getStatus().equals(JobStatus.DONE)) {
             try {
                 job.remove();
-                unitOfWork.registerRemove(jobId);
-            } catch (BJException e) { e.printStackTrace(); }
+                unitOfWork.registerRemove(job.getJobId());
+            } catch (BJException e) {
+                e.printStackTrace();
+            }
         }
 
         unitOfWork.commit();
     }
 
-    private synchronized void remove(Job job){
-        jobRepo.remove(job.getJobId());
-        JobEvent event = JobEvent.builder()
-                .jobOldValue(job)
-                .jobActualValue(null)
-                .jobEventType(JobEventType.REMOVED)
-                .build();
-        fire(event);
+    private synchronized void remove(Job job) {
+        this.jobRepo.remove(job.getJobId());
     }
 
-
-    public void update(List<Job> jobsUpdated, Predicate<Job> jobFilter){
-        List<Job> toCheck = StreamSupport.stream(jobRepo.spliterator(), false).filter(jobFilter).collect(Collectors.toList());
+    public void update(List<Job> jobsUpdated, Predicate<Job> jobFilter) {
+        List<Job> toCheck = getJobStream().filter(jobFilter).collect(Collectors.toList());
 
         for (Job jobUpdated: jobsUpdated){ applyUpdate(jobUpdated, toCheck); }
         for (Job jobToRemove: toCheck){ remove(jobToRemove); }
-
     }
 
-
+    private Stream<Job> getJobStream() {
+        return stream(this.jobRepo.spliterator(), false);
+    }
 
     // implementazione semplicistica
-    protected void fire(Event event){
-        synchronized (triggers) {
-            triggers.forEach(trigger -> { if (trigger.shouldFire(event)) trigger.fire(event); } );
+    protected void fire(Event event) {
+        synchronized (this.triggers) {
+            this.triggers.forEach(trigger -> {
+                if (trigger.shouldFire(event)) trigger.fire(event);
+            });
         }
     }
 
-
+    public List<Job> getJobs() {
+        return unmodifiableList(getJobStream().collect(Collectors.toList()));
+    }
 }
