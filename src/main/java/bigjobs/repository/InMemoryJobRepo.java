@@ -81,12 +81,14 @@ public final class InMemoryJobRepo implements JobRepo {
     @Override
     public void remove(final String id) {
         Job removedJob = this.map.remove(id);
-        fire(
-                JobEvent.builder()
-                        .jobOldValue(removedJob)
-                        .jobEventType(REMOVED)
-                        .build()
-        );
+        if (removedJob != null) {
+            fire(
+                    JobEvent.builder()
+                            .jobOldValue(removedJob)
+                            .jobEventType(REMOVED)
+                            .build()
+            );
+        }
     }
 
     @Override
