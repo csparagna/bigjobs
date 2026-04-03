@@ -3,6 +3,8 @@ package bigjobs;
 import bigjobs.repository.InMemoryJobRepo;
 import bigjobs.repository.JobRepo;
 import bigjobs.repository.UnitOfWork;
+import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,12 +31,15 @@ import static java.util.stream.StreamSupport.stream;
  *     You should have received a copy of the GNU General Public License
  *     along with BigJobs.  If not, see <http://www.gnu.org/licenses/>.
  */
+@Log4j2
 public class BigJobsJobsManager {
     private final JobRepo jobRepo = new InMemoryJobRepo(this::fire);
     private final List<Trigger> triggers = new ArrayList<>();
 
     public void add(Trigger trigger) {
-        triggers.add(trigger);
+        synchronized (triggers) {
+            triggers.add(trigger);
+        }
     }
 
     public void remove(Trigger trigger) {
@@ -44,7 +49,7 @@ public class BigJobsJobsManager {
     }
 
     private synchronized void applyUpdate(Job job, List<Job> toCheck) {
-        System.out.printf("applyUpdate to jobId: %s\n", job.getJobId());
+        log.info("applyUpdate to jobId: {}", job.getJobId());
         UnitOfWork unitOfWork = jobRepo.unitOfWork();
         unitOfWork.registerUpsert(job);
         if (jobRepo.byId(job.getJobId()).isPresent()) {
@@ -56,7 +61,7 @@ public class BigJobsJobsManager {
                 job.remove();
                 unitOfWork.registerRemove(job.getJobId());
             } catch (BJException e) {
-                e.printStackTrace();
+                log.warn("Error removing job {} from technology: {}", job.getJobId(), job.getTechnology(), e);
             }
         }
 

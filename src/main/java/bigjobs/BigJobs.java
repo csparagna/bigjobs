@@ -23,12 +23,37 @@ import static java.util.Collections.unmodifiableList;
  *     You should have received a copy of the GNU General Public License
  *     along with BigJobs.  If not, see <http://www.gnu.org/licenses/>.
  */
-public class BigJobs {
-    private BigJobsJobsManager bigJobsJobsManager = new BigJobsJobsManager();
+import java.util.ArrayList;
+import java.util.List;
 
-    public void addPlugin(BigJobsPlugin updater){
-        updater.register(bigJobsJobsManager);
-        updater.start();
+public class BigJobs {
+    private final BigJobsJobsManager bigJobsJobsManager = new BigJobsJobsManager();
+    private final List<BigJobsPlugin> plugins = new ArrayList<>();
+
+    public synchronized void addPlugin(BigJobsPlugin plugin){
+        plugin.register(bigJobsJobsManager);
+        plugins.add(plugin);
+        plugin.start();
+    }
+
+    public synchronized void stop(){
+        // Try to gracefully stop/close all plugins
+        for (BigJobsPlugin plugin : plugins){
+            try {
+                if (plugin instanceof AutoCloseable){
+                    ((AutoCloseable) plugin).close();
+                } else {
+                    // best-effort: reflectively call stop() if present
+                    try {
+                        plugin.getClass().getMethod("stop").invoke(plugin);
+                    } catch (NoSuchMethodException ignored) {
+                        // no-op
+                    }
+                }
+            } catch (Throwable t){
+                // swallow to continue stopping others
+            }
+        }
     }
 
 

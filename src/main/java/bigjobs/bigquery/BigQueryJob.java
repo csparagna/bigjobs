@@ -39,6 +39,19 @@ public class BigQueryJob implements Job {
         return  bigquery;
     }
 
+    /**
+     * Factory for building from event-like data (e.g., Pub/Sub audit log message)
+     */
+    public static BigQueryJob fromEvent(String gcpProjectId, String jobIdStr, bigjobs.JobStatus status, Map<String,String> labels){
+        BigQueryJob bq = new BigQueryJob();
+        if (labels!=null) bq.getAttributes().putAll(labels);
+        bq.setGcpProjectId(gcpProjectId);
+        bq.setStatus(status);
+        JobId jid = JobId.newBuilder().setProject(gcpProjectId).setJob(jobIdStr).build();
+        bq.setBigQueryJobId(jid);
+        return bq;
+    }
+
 
     @Getter
     @Setter(AccessLevel.PROTECTED)
@@ -85,10 +98,11 @@ public class BigQueryJob implements Job {
     public static BigQueryJob create(com.google.cloud.bigquery.Job job){
         JobConfiguration configuration = job.getConfiguration();
         Map<String,String> labels = null;
-        if (configuration instanceof QueryJobConfiguration){ labels = ((QueryJobConfiguration) configuration).getLabels(); }
-        else if (configuration instanceof LoadJobConfiguration){ labels = ((LoadJobConfiguration) configuration).getLabels(); }
-        else if (configuration instanceof ExtractJobConfiguration){ labels = ((ExtractJobConfiguration) configuration).getLabels(); }
-        else if (configuration instanceof CopyJobConfiguration){ labels = ((CopyJobConfiguration) configuration).getLabels(); }
+        String type = "?";
+        if (configuration instanceof QueryJobConfiguration){ type = "query"; labels = ((QueryJobConfiguration) configuration).getLabels(); }
+        else if (configuration instanceof LoadJobConfiguration){ type = "load"; labels = ((LoadJobConfiguration) configuration).getLabels(); }
+        else if (configuration instanceof ExtractJobConfiguration){ type = "extract"; labels = ((ExtractJobConfiguration) configuration).getLabels(); }
+        else if (configuration instanceof CopyJobConfiguration){ type = "copy"; labels = ((CopyJobConfiguration) configuration).getLabels(); }
 
 
         bigjobs.JobStatus status = null;
@@ -101,6 +115,7 @@ public class BigQueryJob implements Job {
         if (labels!=null) bigQueryJob.getAttributes().putAll(labels);
         bigQueryJob.setGcpProjectId( job.getBigQuery().getOptions().getProjectId() );
         bigQueryJob.setStatus(status);
+        bigQueryJob.setType(type);
         bigQueryJob.setBigQueryJobId( job.getJobId() );
         return bigQueryJob;
     }

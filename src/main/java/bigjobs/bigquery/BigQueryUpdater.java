@@ -51,11 +51,12 @@ public class BigQueryUpdater implements BigJobsPlugin {
 
     public void start(){
         thread = new Thread(() -> {
+            log.info("start polling");
             if (status!=JobStatus.DONE){ return; }
             status = JobStatus.RUNNING;
             while (status == JobStatus.RUNNING){
                 poll(projectId);
-                System.out.println("waiting next poll");
+                log.info("poll done");
                 try {
                     Thread.sleep(10000);
                 } catch (InterruptedException e) {
@@ -78,6 +79,7 @@ public class BigQueryUpdater implements BigJobsPlugin {
                 .collect(Collectors.toList());
 
         manager.update(bjJobs, job -> {
+            log.info("update job: {} {} {} {}", job.getJobId(), job.getStatus(), job.getType(), job.getTechnology());
             if (job instanceof BigQueryJob){
                 BigQueryJob bigQueryJob = (BigQueryJob) job;
                 assert bigQueryJob.gcpProjectId!=null;
@@ -94,7 +96,10 @@ public class BigQueryUpdater implements BigJobsPlugin {
         BigQuery bigquery = BigQueryOptions.newBuilder().setProjectId(gcpProjectId).build().getService();
 
         List<Job> jobList = new LinkedList<>();
-        com.google.api.gax.paging.Page<Job> jobPage = bigquery.listJobs();
+        com.google.api.gax.paging.Page<Job> jobPage = bigquery.listJobs(
+                BigQuery.JobListOption.maxCreationTime(
+                        System.currentTimeMillis() - 1000 * 60 * 60 * 24L)
+                        );
         if (jobPage != null) {
             for (Job job : jobPage.getValues()) {
                 if (job.getJobId().getProject().equals(gcpProjectId)) {
